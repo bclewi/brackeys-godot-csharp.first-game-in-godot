@@ -5,7 +5,7 @@ namespace FirstGame.Scripts;
 public sealed partial class Slime : Node2D
 {
     private const int Speed = 60;
-    
+
     private int _direction = 1;
     private RayCast2D _rayCaseRight = default!;
     private RayCast2D _rayCastLeft = default!;
@@ -33,7 +33,7 @@ public sealed partial class Slime : Node2D
 
         Position = Position with
         {
-            X = Position.X + Speed * _direction * (float) delta
+            X = Position.X + (Speed * _direction * (float) delta)
         };
     }
 }

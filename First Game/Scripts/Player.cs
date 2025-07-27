@@ -6,11 +6,21 @@ public sealed partial class Player : CharacterBody2D
 {
     private const float JumpVelocity = -300F;
     private const float Speed = 130F;
-    private static readonly StringName jump = "jump";
-    private static readonly StringName moveLeft = "move_left";
-    private static readonly StringName moveRight = "move_right";
-    private static readonly StringName idle = "idle";
-    private static readonly StringName run = "run";
+
+    private static class AnimationName
+    {
+        public static StringName Idle { get; } = "idle";
+        public static StringName Jump { get; } = "jump";
+        public static StringName Run { get; } = "run";
+    }
+
+    private static class InputActionName
+    {
+        public static StringName Jump { get; } = "jump";
+        public static StringName MoveLeft { get; } = "move_left";
+        public static StringName MoveRight { get; } = "move_right";
+    }
+
     private AnimatedSprite2D _animatedSprite = default!;
 
     private float _gravity = 0F;
@@ -32,7 +42,7 @@ public sealed partial class Player : CharacterBody2D
                 Y = velocity.Y + _gravity * (float) delta
             };
         }
-        else if (Input.IsActionJustPressed(jump))
+        else if (Input.IsActionJustPressed(InputActionName.Jump))
         {
             velocity = velocity with
             {
@@ -40,21 +50,21 @@ public sealed partial class Player : CharacterBody2D
             };
         }
 
-        var direction = Input.GetAxis(moveLeft, moveRight);
+        var direction = Input.GetAxis(InputActionName.MoveLeft, InputActionName.MoveRight);
         _animatedSprite.FlipH = direction switch
-                                {
-                                    > 0 => false,
-                                    < 0 => true,
-                                    _   => _animatedSprite.FlipH
-                                };
+        {
+            > 0 => false,
+            < 0 => true,
+            _   => _animatedSprite.FlipH
+        };
 
         if (isOnFloor)
         {
-            _animatedSprite.Play(direction == 0F ? idle : run);
+            _animatedSprite.Play(direction == 0F ? AnimationName.Idle : AnimationName.Run);
         }
         else
         {
-            _animatedSprite.Play(jump);
+            _animatedSprite.Play(AnimationName.Jump);
         }
 
         if (direction != 0F)

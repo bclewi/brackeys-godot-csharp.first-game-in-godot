@@ -66,5 +66,3 @@ target_position = Vector2(9, 0)
 [node name="RayCastLeft" type="RayCast2D" parent="."]
 position = Vector2(0, -7)
 target_position = Vector2(-9, 0)
-
-[connection signal="body_entered" from="Killzone" to="Killzone" method="HandleBodyEntered"]

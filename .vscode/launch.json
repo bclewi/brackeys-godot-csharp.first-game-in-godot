@@ -1,0 +1,34 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  // For these launch configurations to work, you need to setup a GODOT
+  // environment variable. On mac or linux, this can be done by adding
+  // the following to your .zshrc, .bashrc, or .bash_profile file:
+  // export GODOT="/Applications/Godot.app/Contents/MacOS/Godot"
+  // Based on https://github.com/chickensoft-games/GameDemo/blob/main/.vscode/launch.json
+  // and https://github.com/jembawls/godot4-vscode-csharp-build-config/blob/main/.vscode/launch.json
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🕹 Debug Game (VSCodium)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "",
+      "internalConsoleOptions": "openOnSessionStart",
+      "pipeTransport": {
+        "debuggerPath": "${extensionInstallFolder:muhammad-sammy.csharp}/.debugger/netcoredbg/netcoredbg",
+        "pipeCwd": "${workspaceFolder}",
+        "pipeProgram": "${env:GODOT}",
+        "pipeArgs": [
+          "--debug"
+        ]
+      }
+    },
+    {
+      "name": "Attach to Process",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}
