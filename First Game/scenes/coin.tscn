@@ -216,5 +216,3 @@ bus = &"SFX"
 libraries = {
 "": SubResource("AnimationLibrary_gmtgn")
 }
-
-[connection signal="body_entered" from="." to="." method="HandleBodyEntered"]

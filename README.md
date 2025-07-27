@@ -1,7 +1,12 @@
-# C# Version
+# Brackeys First Game in C# with Basic Multiplayer
 
-This is a C# version of the project.
-All credit for the original project goes to Brackeys.
+> This example is in progress and does not currently work properly. See the remaining GitHub Issues to complete.
+
+This is a fork of [the C# version of Brackeys first Godot project](https://github.com/brackeys-godot-csharp/first-game-in-godot) with an added basic multiplayer implementation ported from https://github.com/BatteryAcid/first-game-in-godot/.
+
+Uses MultiplayerSynchronizer, MultiplayerSpawner, and RPCs to sync player position, animation, and the moving platform in the game.
+
+- See GDScript tutorial: https://youtu.be/V4a_J38XdHk
 
 Original Readme below.
 
