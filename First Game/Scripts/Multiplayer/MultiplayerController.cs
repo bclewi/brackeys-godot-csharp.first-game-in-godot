@@ -24,14 +24,26 @@ public partial class MultiplayerController : CharacterBody2D
     private CollisionShape2D _collisionShape2D = default!;
     private Timer _respawnTimer = default!;
 
-    private bool _isReady;
-
     public float Direction { get; private set; } = 1;
     public bool OnFloor { get; private set; } = true;
     public bool DoJump { get; set; }
     public bool Alive { get; private set; } = true;
 
-    [Export] public int PlayerId { get; set; } = 1;
+    private int _playerId = 1;
+    public int PlayerId
+    {
+        get => _playerId;
+        set
+        {
+            _playerId = value;
+
+            if (_inputSynchronizer is null)
+            {
+                _inputSynchronizer = this.GetNodeOrThrow<MultiplayerInput>("%InputSynchronizer");
+            }
+            _inputSynchronizer.SetMultiplayerAuthority(value);
+        }
+    }
 
     public override void _Ready()
     {
@@ -39,12 +51,10 @@ public partial class MultiplayerController : CharacterBody2D
 
         _animatedSprite = this.GetNodeOrThrow<AnimatedSprite2D>(nameof(AnimatedSprite2D));
         _gravity = ProjectSettings.GetSetting("physics/2d/default_gravity").AsSingle();
-        _inputSynchronizer = this.GetNodeOrThrow<MultiplayerInput>("%InputSynchronizer");
+        _inputSynchronizer ??= this.GetNodeOrThrow<MultiplayerInput>("%InputSynchronizer");
         _camera2D = this.GetNodeOrThrow<Camera2D>(nameof(Camera2D));
         _collisionShape2D = this.GetNodeOrThrow<CollisionShape2D>(nameof(CollisionShape2D));
         _respawnTimer = this.GetNodeOrThrow<Timer>("RespawnTimer");
-
-        _inputSynchronizer.SetMultiplayerAuthority(PlayerId);
 
         if (Multiplayer.GetUniqueId() == PlayerId)
         {
@@ -54,8 +64,6 @@ public partial class MultiplayerController : CharacterBody2D
         {
             _camera2D.Enabled = false;
         }
-
-        _isReady = true;
     }
 
     public override void _PhysicsProcess(double delta)
