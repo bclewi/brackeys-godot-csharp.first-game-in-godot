@@ -30,7 +30,7 @@ public partial class MultiplayerController : CharacterBody2D
     public bool Alive { get; private set; } = true;
 
     private int _playerId = 1;
-    public int PlayerId
+    [Export] public int PlayerId
     {
         get => _playerId;
         set
