@@ -1,4 +1,3 @@
-using System;
 using Godot;
 
 namespace FirstGame.Scripts.Multiplayer;
@@ -7,13 +6,6 @@ public partial class MultiplayerController : CharacterBody2D
 {
     private const float Speed = 130f;
     private const float JumpVelocity = -300f;
-
-    private static class AnimationName
-    {
-        public static StringName Idle { get; } = "idle";
-        public static StringName Jump { get; } = "jump";
-        public static StringName Run { get; } = "run";
-    }
 
     private AnimatedSprite2D _animatedSprite = default!;
 
@@ -25,8 +17,8 @@ public partial class MultiplayerController : CharacterBody2D
     private Timer _respawnTimer = default!;
 
     public float Direction { get; private set; } = 1;
-    public bool OnFloor { get; private set; } = true;
     public bool DoJump { get; set; }
+    public bool OnFloor { get; private set; } = true;
     public bool Alive { get; private set; } = true;
 
     private int _playerId = 1;
@@ -50,7 +42,9 @@ public partial class MultiplayerController : CharacterBody2D
         base._Ready();
 
         _animatedSprite = this.GetNodeOrThrow<AnimatedSprite2D>(nameof(AnimatedSprite2D));
+
         _gravity = ProjectSettings.GetSetting("physics/2d/default_gravity").AsSingle();
+
         _inputSynchronizer ??= this.GetNodeOrThrow<MultiplayerInput>("%InputSynchronizer");
         _camera2D = this.GetNodeOrThrow<Camera2D>(nameof(Camera2D));
         _collisionShape2D = this.GetNodeOrThrow<CollisionShape2D>(nameof(CollisionShape2D));
@@ -117,16 +111,16 @@ public partial class MultiplayerController : CharacterBody2D
         {
             if (Direction == 0)
             {
-                _animatedSprite.Play(AnimationName.Idle);
+                _animatedSprite.Play("idle");
             }
             else
             {
-                _animatedSprite.Play(AnimationName.Run);
+                _animatedSprite.Play("run");
             }
         }
         else
         {
-            _animatedSprite.Play(AnimationName.Jump);
+            _animatedSprite.Play("jump");
         }
     }
 
