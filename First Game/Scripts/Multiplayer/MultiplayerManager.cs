@@ -5,11 +5,10 @@ namespace FirstGame.Scripts.Multiplayer;
 
 public sealed partial class MultiplayerManager : Node
 {
-    public static MultiplayerManager Instance { get; internal set; } = default!;
-
     private const int ServerPort = 8080;
     private const string ServerIP = "127.0.0.1";
-    private const int MaxConnections = 4;
+
+    public static MultiplayerManager Instance { get; internal set; } = default!;
 
     private PackedScene _multiplayerScene = GD.Load<PackedScene>("res://scenes/multiplayer_player.tscn");
 
@@ -19,14 +18,6 @@ public sealed partial class MultiplayerManager : Node
     public bool MultiplayerModeEnabled { get; private set; }
     public Vector2 RespawnPoint { get; init; } = new(30, 20);
 
-    public class PlayerConnectedEventArgs : EventArgs
-    {
-        public required int PeerId { get; init; }
-    }
-    public event EventHandler<PlayerConnectedEventArgs>? PlayerConnected;
-
-    public event EventHandler? ServerDisconnected;
-
     public override void _EnterTree()
     {
         base._EnterTree();
@@ -34,34 +25,28 @@ public sealed partial class MultiplayerManager : Node
         Instance = this;
     }
 
-    public override void _Ready()
-    {
-        _playersSpawnNode = GetTree().CurrentScene.GetNodeOrThrow<Node2D>("Players");
-    }
-
     public void BecomeHost()
     {
         GD.Print("Starting host!");
+
+        _playersSpawnNode = GetTree().CurrentScene.GetNodeOrThrow<Node2D>("Players");
 
         MultiplayerModeEnabled = true;
         HostModeEnabled = true;
 
         var serverPeer = new ENetMultiplayerPeer();
-        var error = serverPeer.CreateServer(ServerPort, MaxConnections);
+        var error = serverPeer.CreateServer(ServerPort);
         if (error != Error.Ok)
         {
             GD.PushError(new InvalidOperationException("Unable to create Host."
-                + $" {nameof(serverPeer.CreateServer)}({nameof(ServerPort)}: {ServerPort}, {nameof(MaxConnections)}: {MaxConnections})"
+                + $" {nameof(serverPeer.CreateServer)}({nameof(ServerPort)}: {ServerPort})"
                 + $" returned {nameof(Error)} code: {error}"));
         }
 
         Multiplayer.MultiplayerPeer = serverPeer;
 
-        Multiplayer.PeerConnected += HandlePeerConnected;
-        Multiplayer.PeerDisconnected += HandlePeerDisconnected;
-        Multiplayer.ConnectedToServer += HandleConnectedToServer;
-        Multiplayer.ConnectionFailed += HandleConnectionFailed;
-        Multiplayer.ServerDisconnected += HandleServerDisconnected;
+        Multiplayer.PeerConnected += (id) => AddPlayerToGame(id);
+        Multiplayer.PeerDisconnected += (id) => DeletePlayer(id);
 
         RemoveSinglePlayer();
 
@@ -93,6 +78,8 @@ public sealed partial class MultiplayerManager : Node
 
     private void AddPlayerToGame(long id)
     {
+        GD.Print($"Player {id} joined the game!");
+
         if (id > int.MaxValue)
         {
             GD.PushError(new InvalidOperationException($"Unable to assign the ID {id} to the player"
@@ -101,63 +88,27 @@ public sealed partial class MultiplayerManager : Node
 
         var playerToAdd = _multiplayerScene.Instantiate<MultiplayerController>();
         playerToAdd.PlayerId = (int)id;
-        playerToAdd.Name = $"{id}";
+        playerToAdd.Name = id.ToString();
 
         _playersSpawnNode.AddChild(playerToAdd, true);
-
-        GD.Print($"Player {id} joined the game!");
     }
 
     private void DeletePlayer(long id)
     {
+        GD.Print($"Player {id} left the game!");
+
         if (!_playersSpawnNode.HasNode(id.ToString()))
         {
             return;
         }
         _playersSpawnNode.GetNode(id.ToString()).QueueFree();
-
-        GD.Print($"Player {id} left the game!");
     }
 
     private void RemoveSinglePlayer()
     {
+        GD.Print("Removed single player");
+
         var playerToRemove = GetTree().CurrentScene.GetNode("Player");
         playerToRemove.QueueFree();
-
-        GD.Print("Removed single player");
-    }
-
-    private void HandlePeerConnected(long id)
-    {
-        AddPlayerToGame(id);
-        GD.Print($"Peer {id} Connected.");
-    }
-
-    private void HandlePeerDisconnected(long id)
-    {
-        DeletePlayer(id);
-        GD.Print($"Peer {id} Disconnected.");
-    }
-
-    private void HandleConnectedToServer()
-    {
-        PlayerConnected?.Invoke(this, new PlayerConnectedEventArgs()
-        {
-            PeerId = Multiplayer.GetUniqueId()
-        });
-        GD.Print($"Peer {Multiplayer.GetUniqueId()} Connected to the Server.");
-    }
-
-    private void HandleConnectionFailed()
-    {
-        Multiplayer.MultiplayerPeer = null;
-        GD.PushError(new InvalidOperationException($"Peer {Multiplayer.GetUniqueId()} Connection Failed"));
-    }
-
-    private void HandleServerDisconnected()
-    {
-        Multiplayer.MultiplayerPeer = null;
-        ServerDisconnected?.Invoke(this, EventArgs.Empty);
-        GD.Print($"Server Disconnected from Peer {Multiplayer.GetUniqueId()}");
     }
 }
