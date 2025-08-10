@@ -14,6 +14,7 @@ public partial class MultiplayerInput : MultiplayerSynchronizer
     private MultiplayerController _player = default!;
 
     public float InputDirection { get; private set; }
+    public string Username { get; set; } = string.Empty;
 
     public override void _Ready()
     {
@@ -28,6 +29,8 @@ public partial class MultiplayerInput : MultiplayerSynchronizer
         }
 
         InputDirection = Input.GetAxis(InputActionName.MoveLeft, InputActionName.MoveRight);
+
+        Username = SteamManager.Instance.SteamUsername;
     }
 
     public override void _PhysicsProcess(double delta)

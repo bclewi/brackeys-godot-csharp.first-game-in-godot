@@ -21,6 +21,9 @@ public partial class MultiplayerController : CharacterBody2D
     public bool OnFloor { get; private set; } = true;
     public bool Alive { get; private set; } = true;
 
+    private Label _usernameLabel = default!;
+    public string Username { get; set; } = string.Empty;
+
     private int _playerId = 1;
     [Export] public int PlayerId
     {
@@ -50,6 +53,8 @@ public partial class MultiplayerController : CharacterBody2D
         _collisionShape2D = this.GetNodeOrThrow<CollisionShape2D>(nameof(CollisionShape2D));
         _respawnTimer = this.GetNodeOrThrow<Timer>("RespawnTimer");
 
+        _usernameLabel = this.GetNodeOrThrow<Label>("%Username");
+
         if (Multiplayer.GetUniqueId() == PlayerId)
         {
             _camera2D.MakeCurrent();
@@ -60,44 +65,9 @@ public partial class MultiplayerController : CharacterBody2D
         }
     }
 
-    public override void _PhysicsProcess(double delta)
+    private void ApplyAnimations(double delta)
     {
-        base._PhysicsProcess(delta);
-
-        if (Multiplayer.IsServer())
-        {
-            if (!Alive && IsOnFloor())
-            {
-                SetAlive();
-            }
-
-            OnFloor = IsOnFloor();
-            ApplyMovementFromInput(delta);
-        }
-
-        if (!Multiplayer.IsServer() || MultiplayerManager.Instance.HostModeEnabled)
-        {
-            ApplyAnimations();
-        }
-    }
-
-    public void MarkDead()
-    {
-        GD.Print("Mark player dead!");
-        Alive = false;
-        _collisionShape2D.SetDeferred(CollisionShape2D.PropertyName.Disabled, true);
-        _respawnTimer.Start();
-    }
-
-    public void Respawn()
-    {
-        GD.Print("Respawned!");
-        Position = MultiplayerManager.Instance.RespawnPoint;
-        _collisionShape2D.SetDeferred(CollisionShape2D.PropertyName.Disabled, false);
-    }
-
-    private void ApplyAnimations()
-    {
+        // Flip the Sprite
         if (Direction > 0)
         {
             _animatedSprite.FlipH = false;
@@ -107,6 +77,7 @@ public partial class MultiplayerController : CharacterBody2D
             _animatedSprite.FlipH = true;
         }
 
+        // Play animations
         if (OnFloor)
         {
             if (Direction == 0)
@@ -163,6 +134,49 @@ public partial class MultiplayerController : CharacterBody2D
         }
 
         MoveAndSlide();
+
+        Username = _inputSynchronizer.Username;
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        base._PhysicsProcess(delta);
+
+        if (Multiplayer.IsServer())
+        {
+            if (!Alive && IsOnFloor())
+            {
+                SetAlive();
+            }
+
+            OnFloor = IsOnFloor();
+            ApplyMovementFromInput(delta);
+        }
+
+        if (!Multiplayer.IsServer() || MultiplayerManager.Instance.HostModeEnabled)
+        {
+            ApplyAnimations(delta);
+
+            if (_usernameLabel is not null && !string.IsNullOrWhiteSpace(Username))
+            {
+                _usernameLabel.Text = Username;
+            }
+        }
+    }
+
+    public void MarkDead()
+    {
+        GD.Print("Mark player dead!");
+        Alive = false;
+        _collisionShape2D.SetDeferred(CollisionShape2D.PropertyName.Disabled, true);
+        _respawnTimer.Start();
+    }
+
+    public void Respawn()
+    {
+        GD.Print("Respawned!");
+        Position = MultiplayerManager.Instance.RespawnPoint;
+        _collisionShape2D.SetDeferred(CollisionShape2D.PropertyName.Disabled, false);
     }
 
     private void SetAlive()

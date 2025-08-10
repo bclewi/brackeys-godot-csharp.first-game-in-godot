@@ -4,7 +4,7 @@ namespace FirstGame.Scripts;
 
 public sealed partial class Platform : AnimatableBody2D
 {
-    [Export] private AnimationPlayer? AnimationPlayer { get; set; }
+    [Export] private AnimationPlayer AnimationPlayer { get; set; }
 
     public override void _Ready()
     {

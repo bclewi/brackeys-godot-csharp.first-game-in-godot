@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 Music="*res://scenes/music.tscn"
 MultiplayerManager="*res://Scripts/Multiplayer/MultiplayerManager.cs"
+SteamManager="*res://Scripts/Multiplayer/Steam/SteamManager.cs"
 
 [display]
 
