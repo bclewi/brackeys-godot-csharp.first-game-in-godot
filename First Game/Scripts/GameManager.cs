@@ -1,7 +1,7 @@
 ﻿using FirstGame.Scripts.Multiplayer;
 using FirstGame.Scripts.Multiplayer.Networks;
 using Godot;
-using GodotSteam;
+using Steamworks;
 
 namespace FirstGame.Scripts;
 
@@ -81,7 +81,7 @@ public sealed partial class GameManager : Node
         _multiplayerHUD.Hide();
         _steamHUD.Show();
         SteamManager.Instance.InitializeSteam();
-        Steam.LobbyMatchList += OnLobbyMatchList;
+        _networkManager.LobbyMatchList += OnLobbyMatchList;
         _networkManager.ActiveNetworkType = MultiplayerNetworkType.Steam;
     }
 
@@ -100,7 +100,7 @@ public sealed partial class GameManager : Node
         _networkManager.JoinAsClient(lobbyId);
     }
 
-    private void OnLobbyMatchList(Godot.Collections.Array lobbies)
+    private void OnLobbyMatchList(object sender, SteamNetwork.RequestLobbyListEventArgs e)
     {
         GD.Print("On lobby match list");
 
@@ -109,15 +109,27 @@ public sealed partial class GameManager : Node
             lobbyChild.QueueFree();
         }
 
-        foreach (var lobby in lobbies)
+        if (e.BIOFailure)
         {
-            var lobbyId = lobby.As<ulong>();
+            GD.Print($"IO Failure");
+            return;
+        }
 
-            var lobbyName = Steam.GetLobbyData(lobbyId, "name");
+        if (e.PCallback.m_nLobbiesMatching == 0)
+        {
+            GD.Print($"Number of matching lobbies found: {e.PCallback.m_nLobbiesMatching}");
+            return;
+        }
+
+        for (var i = 0; i < e.PCallback.m_nLobbiesMatching; i++)
+        {
+            var steamIDLobby = SteamMatchmaking.GetLobbyByIndex(i);
+
+            var lobbyName = SteamMatchmaking.GetLobbyData(steamIDLobby, "name");
 
             if (!string.IsNullOrWhiteSpace(lobbyName))
             {
-                var lobbyMode = Steam.GetLobbyData(lobbyId, "mode");
+                var lobbyMode = SteamMatchmaking.GetLobbyData(steamIDLobby, "mode");
 
                 var lobbyButton = new Button();
                 lobbyButton.Text = $"{lobbyName} | {lobbyMode}";
@@ -127,9 +139,9 @@ public sealed partial class GameManager : Node
                 var fv = new FontVariation();
                 fv.BaseFont = GD.Load<Font>("res://assets/fonts/PixelOperator8.ttf");
                 lobbyButton.AddThemeFontOverride(Font, fv);
-                lobbyButton.Name = $"lobby_{lobbyId}";
+                lobbyButton.Name = $"lobby_{steamIDLobby.m_SteamID}";
                 lobbyButton.Alignment = HorizontalAlignment.Left;
-                lobbyButton.Pressed += () => JoinLobby(lobbyId);
+                lobbyButton.Pressed += () => JoinLobby(steamIDLobby.m_SteamID);
 
                 _lobbiesVBoxContainer.AddChild(lobbyButton);
             }

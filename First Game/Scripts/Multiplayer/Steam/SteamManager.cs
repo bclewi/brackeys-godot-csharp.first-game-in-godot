@@ -1,6 +1,5 @@
 using Godot;
-using GodotSteam;
-using System.Text.Json;
+using Steamworks;
 
 namespace FirstGame.Scripts.Multiplayer;
 
@@ -14,7 +13,9 @@ public partial class SteamManager : Node
     public string SteamUsername { get; private set; } = string.Empty;
 
     private int _lobbyId;
-    public long LobbyMaxMembers { get; private set; } = 4;
+    public int LobbyMaxMembers { get; private set; } = 4;
+
+    private bool _isSteamInitialized;
 
     public override void _EnterTree()
     {
@@ -32,23 +33,26 @@ public partial class SteamManager : Node
     {
         base._Process(delta);
 
-        Steam.RunCallbacks();
+        if (_isSteamInitialized)
+        {
+            SteamAPI.RunCallbacks();
+        }
     }
 
     public void InitializeSteam()
     {
-        var initializeResponse = Steam.SteamInitEx(retrieveStats: false, SteamAppId);
-        GD.Print($"Did Steam Initialize?: {JsonSerializer.Serialize(initializeResponse)}");
+        var steamApiInitResult = SteamAPI.InitEx(out var steamErrMsg);
+        GD.Print($"Did Steam Initialize? Result: {steamApiInitResult}, Error Message: {steamErrMsg}");
 
-        if (initializeResponse.Status != SteamInitExStatus.SteamworksActive)
+        if (steamApiInitResult != ESteamAPIInitResult.k_ESteamAPIInitResult_OK)
         {
-            GD.Print($"Failed to init Steam! Shutting down. {JsonSerializer.Serialize(initializeResponse)}");
+            GD.Print($"Failed to init Steam! Shutting down.");
             GetTree().Quit();
         }
 
-        _isOwned = Steam.IsSubscribed();
-        _steamId = Steam.GetSteamID();
-        SteamUsername = Steam.GetPersonaName();
+        _isOwned = SteamApps.BIsSubscribed();
+        _steamId = SteamUser.GetSteamID().GetAccountID().m_AccountID;
+        SteamUsername = SteamFriends.GetPersonaName();
 
         GD.Print($"{nameof(_steamId)} {_steamId}");
 
@@ -57,5 +61,7 @@ public partial class SteamManager : Node
             GD.Print("User does not own game!");
             GetTree().Quit();
         }
+
+        _isSteamInitialized = true;
     }
 }

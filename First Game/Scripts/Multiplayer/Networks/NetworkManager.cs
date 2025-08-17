@@ -1,4 +1,5 @@
 using Godot;
+using System;
 
 namespace FirstGame.Scripts.Multiplayer.Networks;
 
@@ -10,6 +11,8 @@ public partial class NetworkManager : Node
     private PackedScene _enetNetworkScene = GD.Load<PackedScene>("res://scenes/multiplayer/networks/enet_network.tscn");
     private PackedScene _steamNetworkScene = GD.Load<PackedScene>("res://scenes/multiplayer/networks/steam_network.tscn");
     private INetwork _activeNetwork = default!;
+
+    public event EventHandler<SteamNetwork.RequestLobbyListEventArgs> LobbyMatchList;
 
     public void BuildMultiplayerNetwork()
     {
@@ -28,12 +31,18 @@ public partial class NetworkManager : Node
                 case MultiplayerNetworkType.Steam:
                     GD.Print("Setting network type to Steam");
                     SetActiveNetwork(_steamNetworkScene);
+                    ((SteamNetwork)_activeNetwork).RequestLobbyListCompleted += OnLobbyMatchList;
                     break;
                 default:
                     GD.Print("No match for network type!");
                     break;
             }
         }
+    }
+
+    private void OnLobbyMatchList(object sender, SteamNetwork.RequestLobbyListEventArgs e)
+    {
+        LobbyMatchList?.Invoke(this, e);
     }
 
     private void SetActiveNetwork(PackedScene activeNetworkScene)

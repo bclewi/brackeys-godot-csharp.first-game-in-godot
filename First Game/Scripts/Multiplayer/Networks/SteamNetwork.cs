@@ -1,7 +1,8 @@
 using Godot;
 using SteamMultiplayerPeerCSharp;
+using Steamworks;
 using System;
-using GodotSteam;
+using System.Text.Json;
 
 namespace FirstGame.Scripts.Multiplayer.Networks;
 
@@ -17,6 +18,17 @@ public partial class SteamNetwork : Node, INetwork
     private const string LobbyName = "BAD_CSHARP";
     private const string LobbyMode = "CoOP";
 
+    private CallResult<LobbyCreated_t> _lobbyCreatedResult;
+    private CallResult<LobbyEnter_t> _lobbyJoinedResult;
+    private CallResult<LobbyMatchList_t> _requestLobbyListResult;
+
+    public class RequestLobbyListEventArgs : EventArgs
+    {
+        public LobbyMatchList_t PCallback;
+        public bool BIOFailure;
+    }
+    public event EventHandler<RequestLobbyListEventArgs> RequestLobbyListCompleted;
+
     public override void _EnterTree()
     {
         base._EnterTree();
@@ -29,23 +41,9 @@ public partial class SteamNetwork : Node, INetwork
         // Each property to synchronize via MultiplayerSynchronizer should have the Replicate option set to "On Change"
         // to minimize the amount of data needs to be sent over the wire. However, updating the config of MultiplayerPeer
         // may be needed in an actual game depending on how much data is being syncrhonized, as is shown here.
-        _multiplayerPeer.SetConfig(SteamNetworkingConfig.SendBufferSize, 524288);
-        _multiplayerPeer.SetConfig(SteamNetworkingConfig.RecvBufferSize, 524288);
-        _multiplayerPeer.SetConfig(SteamNetworkingConfig.SendRateMax, 524288);
-    }
-
-    public override void _Ready()
-    {
-        base._Ready();
-
-        Steam.LobbyCreated += OnLobbyCreated;
-    }
-
-    public override void _ExitTree()
-    {
-        Steam.LobbyCreated -= OnLobbyCreated;
-
-        base._ExitTree();
+        //_multiplayerPeer.SetConfig(SteamNetworkingConfig.SendBufferSize, 524288);
+        //_multiplayerPeer.SetConfig(SteamNetworkingConfig.RecvBufferSize, 524288);
+        //_multiplayerPeer.SetConfig(SteamNetworkingConfig.SendRateMax, 524288);
     }
 
     public void BecomeHost()
@@ -55,39 +53,47 @@ public partial class SteamNetwork : Node, INetwork
         Multiplayer.PeerConnected += AddPlayerToGame;
         Multiplayer.PeerDisconnected += DelPlayer;
 
-        Steam.LobbyJoined += OnLobbyJoined;
-        Steam.CreateLobby(Steam.LobbyType.Public, SteamManager.Instance.LobbyMaxMembers);
+        _lobbyCreatedResult = CallResult<LobbyCreated_t>.Create(OnLobbyCreated);
+        var handle = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, SteamManager.Instance.LobbyMaxMembers);
+        _lobbyCreatedResult.Set(handle);
     }
 
     public void JoinAsClient(ulong lobbyId = 0)
     {
         GD.Print($"Joining lobby {lobbyId}");
-        Steam.LobbyJoined += OnLobbyJoined;
-        Steam.JoinLobby(lobbyId);
+
+        var steamIDLobby = new CSteamID(lobbyId);
+
+        _lobbyJoinedResult = CallResult<LobbyEnter_t>.Create(OnLobbyJoined);
+        var handle = SteamMatchmaking.JoinLobby(steamIDLobby);
+        _lobbyJoinedResult.Set(handle);
     }
 
-    private void OnLobbyCreated(long connect, ulong lobbyId)
+    private void OnLobbyCreated(LobbyCreated_t pCallback, bool bIOFailure)//long connect, ulong lobbyId)
     {
         GD.Print("On Lobby created");
-        if (connect == 1)
+        if (pCallback.m_eResult != EResult.k_EResultOK || bIOFailure)
         {
-            _hostedLobbyId = lobbyId;
-            GD.Print($"Created lobby: {_hostedLobbyId}");
-
-            Steam.SetLobbyJoinable(_hostedLobbyId, true);
-
-            Steam.SetLobbyData(_hostedLobbyId, "name", LobbyName);
-            Steam.SetLobbyData(_hostedLobbyId, "mode", LobbyMode);
-
-            CreateHost();
+            GD.Print($"Error creating lobby. IOFailure: {bIOFailure}, Result: {JsonSerializer.Serialize(pCallback)}");
         }
+
+        _hostedLobbyId = pCallback.m_ulSteamIDLobby;
+
+        var steamHostedLobbyId = new CSteamID(_hostedLobbyId);
+        SteamMatchmaking.SetLobbyJoinable(steamHostedLobbyId, bLobbyJoinable: true);
+        SteamMatchmaking.SetLobbyData(steamHostedLobbyId, "name", LobbyName);
+        SteamMatchmaking.SetLobbyData(steamHostedLobbyId, "mode", LobbyMode);
+
+        CreateHost();
+
+        GD.Print($"Created lobby: {_hostedLobbyId}");
     }
 
     private void CreateHost()
     {
         GD.Print("Create Host");
         var error = _multiplayerPeer.CreateHost(0);
-        if (error == Error.Ok)
+        if (error == Godot.Error.Ok)
         {
             Multiplayer.MultiplayerPeer = _multiplayerPeer.MultiplayerPeer;
 
@@ -102,22 +108,22 @@ public partial class SteamNetwork : Node, INetwork
         }
     }
 
-    private void OnLobbyJoined(ulong lobby, long permissions, bool locked, long response)
+    private void OnLobbyJoined(LobbyEnter_t pCallback, bool bIOFailure)
     {
-        GD.Print($"On lobby joined: {response}");
+        GD.Print($"On lobby joined: {pCallback.m_EChatRoomEnterResponse}");
 
-        if (response == 1)
+        if (pCallback.m_EChatRoomEnterResponse == 1)
         {
-            var id = Steam.GetLobbyOwner(lobby);
-            if (id != Steam.GetSteamID())
+            var lobbyOwnerSteamID = SteamMatchmaking.GetLobbyOwner(new CSteamID(pCallback.m_ulSteamIDLobby));
+            if (lobbyOwnerSteamID != SteamUser.GetSteamID())
             {
                 GD.Print("Connecting client to socket...");
-                ConnectSocket(id);
+                ConnectSocket(lobbyOwnerSteamID);
             }
         }
         else
         {
-            var failReason = response switch
+            var failReason = pCallback.m_EChatRoomEnterResponse switch
             {
                 2 => "This lobby no longer exists.",
                 3 => "You don't have permission to join this lobby.",
@@ -135,10 +141,10 @@ public partial class SteamNetwork : Node, INetwork
         }
     }
 
-    private void ConnectSocket(ulong steamId)
+    private void ConnectSocket(CSteamID steamId)
     {
-        var error = _multiplayerPeer.CreateClient(steamId, 0);
-        if (error == Error.Ok)
+        var error = _multiplayerPeer.CreateClient(steamId.GetAccountID().m_AccountID, 0);
+        if (error == Godot.Error.Ok)
         {
             GD.Print("Connecting peer to host...");
             Multiplayer.MultiplayerPeer = _multiplayerPeer.MultiplayerPeer;
@@ -151,11 +157,22 @@ public partial class SteamNetwork : Node, INetwork
 
     public void ListLobbies()
     {
-        Steam.AddRequestLobbyListDistanceFilter(Steam.LobbyDistanceFilter.Worldwide);
+        SteamMatchmaking.AddRequestLobbyListDistanceFilter(ELobbyDistanceFilter.k_ELobbyDistanceFilterWorldwide);
         // NOTE: If you are using the test app id, you will need to apply a filter on your game name
         // Otherwise, it may not show up in the lobby list of your clients
-        Steam.AddRequestLobbyListStringFilter("name", LobbyName, Steam.LobbyComparison.LobbyComparisonEqual);
-        Steam.RequestLobbyList();
+        SteamMatchmaking.AddRequestLobbyListStringFilter("name", LobbyName, ELobbyComparison.k_ELobbyComparisonEqual);
+        _requestLobbyListResult = CallResult<LobbyMatchList_t>.Create(OnRequestLobbyListCompleted);
+        var handle = SteamMatchmaking.RequestLobbyList();
+        _requestLobbyListResult.Set(handle);
+    }
+
+    private void OnRequestLobbyListCompleted(LobbyMatchList_t pCallback, bool bIOFailure)
+    {
+        RequestLobbyListCompleted?.Invoke(this, new()
+        {
+            PCallback = pCallback,
+            BIOFailure = bIOFailure
+        });
     }
 
     private void AddPlayerToGame(long id)
