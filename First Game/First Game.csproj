@@ -1,9 +1,25 @@
 <Project Sdk="Godot.NET.Sdk/4.4.1">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <RootNamespace>FirstGame</RootNamespace>
-    <Nullable>disable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<RootNamespace>FirstGame</RootNamespace>
+		<Nullable>disable</Nullable>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<GodotProjectRoot>$(MSBuildProjectDirectory)</GodotProjectRoot>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Steamworks.Net" Version="2024.8.0" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- Windows DLL -->
+		<Content Include="addons/Steamworks.NET/Windows-x64/steam_api64.dll">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<CopyToPublishDirectory>Always</CopyToPublishDirectory>
+			<Link>steam_api64.dll</Link>
+		</Content>
+	</ItemGroup>
+	<Target Name="CopySteamAPILibrary" AfterTargets="Build">
+		<!-- Windows: copy steam_api64.dll -->
+		<Copy Condition=" '$(OS)' == 'Windows_NT' " SourceFiles="addons/Steamworks.NET/Windows-x64/steam_api64.dll" DestinationFolder="$(GodotProjectRoot)" />
+	</Target>
 </Project>
